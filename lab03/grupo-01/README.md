@@ -1,6 +1,61 @@
-# Laboratorio 3 — Grupo 01
+# TEC · Tecnológico de Costa Rica
 
-¡Hola\! Bienvenidos al repositorio del **Grupo 01** para el Laboratorio 3 del curso IC-4301 · Bases de Datos I.
+## Escuela de Computación · Sede San Carlos
+
+### IC-4301 · Bases de Datos I · II Semestre 2026
+
+---
+
+# Laboratorio 3: Del modelo lógico a la implementación física
+
+## Grupo 01
+
+### Caso: Clínica Los Robles (Proyecto 1 \- v2.1)
+
+**Subproceso:** Atención médica, diagnóstico y tratamiento clínico
+
+**Profesor:**  
+Jonathan Cortés Seas
+
+**Estudiantes:**
+
+* Joan Steven Cordero Coto (2024156580)  
+* Jason René Martínez Gutiérrez (2025105665)
+
+**Fecha de entrega:**  
+Octubre de 2026
+
+---
+
+## Control de Cambios: Transición y Sincronización con el Proyecto 1 (v2.1)
+
+En atención a las observaciones y correcciones formales indicadas por el profesor en la evaluación de los entregables del Proyecto 1, se aplicaron ajustes al subproceso seleccionado de **Atención médica, diagnóstico y tratamiento clínico**:
+
+1. **Inclusión de atributos temporales y pautas en `TRATAMIENTO` (RN-25):**  
+     
+   * **Cambio:** Se incorporaron formalmente las columnas `fecha_inicio_prevista` (obligatoria), `fecha_fin_prevista` (opcional con validación de secuencia), `instrucciones` (`NOT NULL`), `dosis`, `frecuencia` y `cantidad_sesiones`.  
+   * **Justificación:** Cumplir con la especificación del caso sobre la delimitación temporal del tratamiento y evitar omisiones respecto a las indicaciones médicas.
+
+   
+
+2. **Trazabilidad de sustitución médica y estados del tratamiento (RN-26, S-15):**  
+     
+   * **Cambio:** Se definió la clave foránea recursiva `id_tratamiento_sustituido` con restricción de unicidad (`UNIQUE`) y dominio cerrado para `estado_actual` (`Planificado`, `Iniciado`, `Completado`, `Suspendido`, `Sustituido`).  
+   * **Justificación:** Preservar la cardinalidad 1:1 en el reemplazo de indicaciones clínicas y permitir la trazabilidad histórica de los tratamientos sin sobrescribir información.
+
+   
+
+3. **Inmutabilidad y versionado de observaciones clínicas (RN-19, S-13):**  
+     
+   * **Cambio:** Se unificó el atributo temporal como `fecha_hora_registro` y se conservó la clave primaria compuesta (`id_consulta`, `consecutivo_observacion`, `num_version`) junto con el indicador `es_vigente`.  
+   * **Justificación:** Garantizar que las correcciones o adiciones a las notas de examen físico generen nuevas revisiones sin alterar el expediente original.
+
+   
+
+4. **Respaldo formal de dominios cerrados (S-16):**  
+     
+   * **Cambio:** Se implementaron restricciones declarativas `CHECK` nativas para categorías diagnósticas (`Principal`, `Secundario`), condiciones (`Presuntivo`, `Confirmado`, `Descartado`) y tipos de tratamiento (`Medicamento`, `Procedimiento`, `Indicación`, `Recomendación`).  
+   * **Justificación:** Proveer respaldo explícito a los dominios operativos cerrados utilizados por el modelo relacional.
 
 ---
 
@@ -8,7 +63,7 @@
 
 ## 1\. Fragmento del modelo lógico utilizado
 
-El subsistema seleccionado corresponde al proceso de **Atención Médica Efectiva, Diagnóstico Clínico y Prescripción Terapéutica** de la Clínica Los Robles, definido a partir de los macroprocesos PR-04 y PR-05 del Proyecto 1\.
+El subsistema seleccionado corresponde al proceso de **Atención médica, diagnóstico y tratamiento clínico** de la Clínica Los Robles, definido a partir de los macroprocesos PR-04 y PR-05 del Proyecto 1\.
 
 Este subsistema comprende seis relaciones del modelo lógico original, que permiten registrar las consultas realizadas, las observaciones clínicas versionadas, los diagnósticos identificados y los tratamientos prescritos.
 
@@ -23,11 +78,11 @@ Este subsistema comprende seis relaciones del modelo lógico original, que permi
 
 **Cardinalidades conservadas:**
 
-- CONSULTA → OBSERVACION\_CLINICA: 1:N.  
-- CONSULTA → TRATAMIENTO: 1:N.  
-- CONSULTA ↔ DIAGNOSTICO: N:M, mediante CONSULTA\_DIAGNOSTICO\_NM.  
-- TRATAMIENTO ↔ DIAGNOSTICO: N:M, mediante TRATAMIENTO\_DIAGNOSTICO\_NM.  
-- TRATAMIENTO → TRATAMIENTO: relación recursiva 1:1 opcional, para registrar sustituciones.
+* CONSULTA → OBSERVACION\_CLINICA: 1:N.  
+* CONSULTA → TRATAMIENTO: 1:N.  
+* CONSULTA ↔ DIAGNOSTICO: N:M, mediante CONSULTA\_DIAGNOSTICO\_NM.  
+* TRATAMIENTO ↔ DIAGNOSTICO: N:M, mediante TRATAMIENTO\_DIAGNOSTICO\_NM.  
+* TRATAMIENTO → TRATAMIENTO: relación recursiva 1:1 opcional, para registrar sustituciones.
 
 Además, CONSULTA conserva sus referencias obligatorias a PACIENTE y MEDICO y su referencia opcional a CITA, según las reglas RN-16 y RN-17.
 
@@ -52,18 +107,18 @@ La transformación del modelo lógico al físico mantiene los nombres, identific
 
 Las decisiones principales son:
 
-- **Conservación de las claves compuestas:** Las tablas `observacion_clinica`, `consulta_diagnostico_nm` y `tratamiento_diagnostico_nm` mantienen sus identificadores originales compuestos, evitando introducir claves artificiales innecesarias.  
-- **Integridad de las relaciones:** Las asociaciones 1:N se representan mediante claves foráneas con reglas `ON DELETE RESTRICT` y `ON UPDATE CASCADE` para proteger la inmutabilidad de la información médica.  
-- **Versionado clínico inmutable:** `observacion_clinica` conserva `num_version` y `es_vigente`, de acuerdo con RN-19 y S-13, garantizando que una corrección no sobrescriba la nota previa.  
-- **Sustitución de tratamientos:** `tratamiento` conserva `id_tratamiento_sustituido` como clave foránea recursiva, opcional y única (`UQ`), de acuerdo con RN-26 y S-15.  
-- **Restricciones de dominio:** Los valores permitidos para categorías diagnósticas, condiciones, tipos de tratamiento y estados se conservan mediante restricciones `CHECK` nativas de PostgreSQL, siguiendo las reglas RN-20, RN-25, RN-26 y el supuesto S-16.
+* **Conservación de las claves compuestas:** Las tablas `observacion_clinica`, `consulta_diagnostico_nm` y `tratamiento_diagnostico_nm` mantienen sus identificadores originales compuestos, evitando introducir claves artificiales innecesarias.  
+* **Integridad de las relaciones:** Las asociaciones 1:N se representan mediante claves foráneas con reglas `ON DELETE RESTRICT` y `ON UPDATE CASCADE` para proteger la inmutabilidad de la información médica.  
+* **Versionado clínico inmutable:** `observacion_clinica` conserva `num_version` y `es_vigente`, de acuerdo con RN-19 y S-13, garantizando que una corrección no sobrescriba la nota previa.  
+* **Sustitución de tratamientos:** `tratamiento` conserva `id_tratamiento_sustituido` como clave foránea recursiva, opcional y única (`UQ`), de acuerdo con RN-26 y S-15.  
+* **Restricciones de dominio:** Los valores permitidos para categorías diagnósticas, condiciones, tipos de tratamiento y estados se conservan mediante restricciones `CHECK` nativas de PostgreSQL, siguiendo las reglas RN-20, RN-25, RN-26 y el supuesto S-16.
 
 ## 4\. Dependencias externas y limitaciones
 
 El subsistema clínico depende conceptualmente de las relaciones PACIENTE, MEDICO y CITA, pertenecientes a otros procesos de la clínica (admisión y agendamiento). Siguiendo las pautas de la Sección 3 del README del laboratorio:
 
-- `id_paciente` e `id_medico` se definen como `INTEGER NOT NULL`, modelando fielmente la regla RN-17 sin acarrear tablas auxiliares extensas.  
-- `id_cita` se conserva como `INTEGER UNIQUE NULL`, permitiendo reflejar atenciones de urgencia (RN-16).
+* `id_paciente` e `id_medico` se definen como `INTEGER NOT NULL`, modelando fielmente la regla RN-17 sin acarrear tablas auxiliares extensas.  
+* `id_cita` se conserva como `INTEGER UNIQUE NULL`, permitiendo reflejar atenciones de urgencia (RN-16).
 
 ---
 
@@ -130,25 +185,25 @@ Se implementaron cuatro rutinas en PL/pgSQL en el archivo `04_rutinas.sql`:
 ### C1. Funciones en PL/pgSQL (8 puntos)
 
 1. **`fn_calcular_dias_tratamiento(p_id_tratamiento INTEGER)` (Cálculo/Respuesta útil):**  
-   - **Regla:** RN-25.  
-   - **Propósito:** Calcula la duración neta en días calendario de una prescripción a partir de sus fechas previstas. Retorna `NULL` si el tratamiento es indefinido y eleva una excepción si el ID no existe.  
+   * **Regla:** RN-25.  
+   * **Propósito:** Calcula la duración neta en días calendario de una prescripción a partir de sus fechas previstas. Retorna `NULL` si el tratamiento es indefinido y eleva una excepción si el ID no existe.  
 2. **`fn_determinar_prioridad_consulta(p_id_consulta INTEGER)` (Decisión de negocio):**  
-   - **Reglas:** RN-20 y RN-21.  
-   - **Propósito:** Clasifica la atención médica en `'ALTA'`, `'MEDIA'` o `'BAJA'` evaluando si existen diagnósticos principales confirmados y prescripciones múltiples mediante estructuras `IF-ELSIF-ELSE`.
+   * **Reglas:** RN-20 y RN-21.  
+   * **Propósito:** Clasifica la atención médica en `'ALTA'`, `'MEDIA'` o `'BAJA'` evaluando si existen diagnósticos principales confirmados y prescripciones múltiples mediante estructuras `IF-ELSIF-ELSE`.
 
 ### C2. Procedimiento almacenado de negocio (10 puntos)
 
 * **`sp_sustituir_tratamiento(...)`:**  
-  - **Regla:** RN-26 y supuesto S-15.  
-  - **Validaciones:** Verifica existencia del tratamiento anterior, que no esté en un estado final (`'Suspendido'`, `'Sustituido'`, `'Completado'`), que no haya sido relevado previamente (`uq_tratamiento_sustituido`) y la coherencia cronológica de inicio.  
-  - **Operación:** Pasa el tratamiento anterior a estado `'Sustituido'`, inserta el nuevo tratamiento con la FK recursiva y hereda automáticamente los diagnósticos asociados en `tratamiento_diagnostico_nm` (RN-21).
+  * **Regla:** RN-26 y supuesto S-15.  
+  * **Validaciones:** Verifica existencia del tratamiento anterior, que no esté en un estado final (`'Suspendido'`, `'Sustituido'`, `'Completado'`), que no haya sido relevado previamente (`uq_tratamiento_sustituido`) y la coherencia cronológica de inicio.  
+  * **Operación:** Pasa el tratamiento anterior a estado `'Sustituido'`, inserta el nuevo tratamiento con la FK recursiva y hereda automáticamente los diagnósticos asociados en `tratamiento_diagnostico_nm` (RN-21).
 
 ### C3. Técnica procedimental adicional (7 puntos)
 
 * **`fn_auditar_evolucion_consulta_cursor(p_id_consulta INTEGER)` (Cursor Explícito):**  
-  - **Técnica:** Cursor explícito de PostgreSQL (`OPEN`, `FETCH`, `CLOSE`).  
-  - **Propósito:** Itera de manera secuencial a lo largo de las revisiones de notas de evolución (RN-19), compilando un reporte de auditoría clínica estructurado.  
-  - **Discusión técnica:** Se incluye en la documentación y en el código la comparación con la alternativa basada en conjuntos (`STRING_AGG`), justificando el uso del cursor con fines didácticos para control de flujo procedimental.
+  * **Técnica:** Cursor explícito de PostgreSQL (`OPEN`, `FETCH`, `CLOSE`).  
+  * **Propósito:** Itera de manera secuencial a lo largo de las revisiones de notas de evolución (RN-19), compilando un reporte de auditoría clínica estructurado.  
+  * **Discusión técnica:** Se incluye en la documentación y en el código la comparación con la alternativa basada en conjuntos (`STRING_AGG`), justificando el uso del cursor con fines didácticos para control de flujo procedimental.
 
 ---
 
@@ -156,20 +211,94 @@ Se implementaron cuatro rutinas en PL/pgSQL en el archivo `04_rutinas.sql`:
 
 ### D1. Instrucciones de ejecución y reproducibilidad del entorno
 
-- **Motor requerido:** PostgreSQL 14 o superior.  
-- **Herramientas:** Cliente CLI `psql` o DBeaver.  
-- **Orden de ejecución obligatorio (entorno limpio):**  
-  1. `sql/01_esquema.sql` (Limpieza previa y creación DDL completa con restricciones).  
-  2. `sql/02_datos.sql` (Carga del set representativo de 24 tuplas).  
-  3. `sql/04_rutinas.sql` (Compilación de funciones, procedimientos y cursor).  
-  4. `sql/03_consultas.sql` (Ejecución de consultas de negocio Q01–Q04).  
-  5. `sql/05_pruebas.sql` (Ejecución del bloque transaccional autónomo con las pruebas P01–P08).
+* **Motor requerido:** PostgreSQL 14 o superior.  
+* **Herramientas cliente:** `psql` (CLI oficial) o DBeaver.  
+* **Orden de ejecución obligatorio (entorno limpio):**
+
+```
+01_esquema.sql  -->  02_datos.sql  -->  04_rutinas.sql  -->  03_consultas.sql  -->  05_pruebas.sql
+```
+
+#### Guía de preparación del entorno con Docker:
+
+1. **Creación local del archivo de configuración Docker Compose:**
+
+Debido a que las restricciones de entrega del repositorio únicamente permiten archivos con extensiones específicas (`.md`, `.sql`, `.pdf`, `.png`, `.jpg`, `.jpeg`) y prohíben explícitamente la inclusión de archivos `.yaml` / `.yml`, el evaluador o usuario debe crear manualmente un archivo denominado `docker-compose.yml` (o `compose.yaml`) en la raíz de su espacio de trabajo e incluir el siguiente contenido:
+
+```
+services:
+  db:
+    image: postgres:17
+    container_name: clinica-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ClinicaLosRobles
+      POSTGRES_USER: Admin
+      POSTGRES_PASSWORD: LAB3
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+2. **Levantar el contenedor de PostgreSQL:**
+
+Una vez creado y guardado el archivo `docker-compose.yml` en la raíz, ejecute el siguiente comando para levantar el servicio:
+
+```sh
+docker compose up -d
+```
+
+3. **Ejecutar los scripts en orden secuencial:**  
+     
+   * **En entornos Linux / macOS / Git Bash:**
+
+```sh
+# 1. Esquema DDL con restricciones nativas (A2, A3)
+docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles < sql/01_esquema.sql
+
+# 2. Carga del set de 24 datos representativos (B1)
+docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles < sql/02_datos.sql
+
+# 3. Compilación de funciones, procedimiento y cursor (C1, C2, C3)
+docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles < sql/04_rutinas.sql
+
+# 4. Consultas analíticas y de negocio Q01 a Q04 (B2)
+docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles < sql/03_consultas.sql
+
+# 5. Suite de pruebas transaccionales P01 a P08 (B3)
+docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles < sql/05_pruebas.sql
+```
+
+   * **En Windows PowerShell:**
+
+```
+# 1. Esquema DDL con restricciones nativas (A2, A3)
+Get-Content sql/01_esquema.sql | docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles
+
+# 2. Carga del set de 24 datos representativos (B1)
+Get-Content sql/02_datos.sql | docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles
+
+# 3. Compilación de funciones, procedimiento y cursor (C1, C2, C3)
+Get-Content sql/04_rutinas.sql | docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles
+
+# 4. Consultas analíticas y de negocio Q01 a Q04 (B2)
+Get-Content sql/03_consultas.sql | docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles
+
+# 5. Suite de pruebas transaccionales P01 a P08 (B3)
+Get-Content sql/05_pruebas.sql | docker exec -i clinica-postgres psql -U Admin -d ClinicaLosRobles
+```
 
 ### D2. Evidencias de ejecución
 
-Los resultados de ejecución y trazas se encuentran compilados bajo la carpeta `evidencias/` asociada a cada ID de prueba y consulta.
+Los resultados de ejecución, tablas de salida y trazas de excepción capturadas durante la ejecución de las consultas y pruebas se encuentran detallados en el archivo `evidencias/resultados.md`.
 
 ### D3. Enlaces a los videos de defensa individual
+
+Conforme a las directrices de la Sección 4 (D3) del laboratorio (toma continua sin cortes, cámara visible y pantalla compartida durante la ejecución de las pruebas):
 
 | Integrante | Rol / Componentes expuestos | Enlace al video de defensa |
 | :---- | :---- | :---- |
