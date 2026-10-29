@@ -10,6 +10,8 @@ El 28-10-2026 se ejecutaron los scripts en la base `huellas_seguras_lab3` con Po
 | `03_consultas.sql` | Q01–Q04 devolvieron respectivamente 3, 3, 5 y 1 filas. |
 | `05_pruebas.sql` | P01–P12 devolvieron doce conclusiones `Cumple`; el script terminó con `ROLLBACK`. |
 
+![Verificación de los datos cargados en la tabla animal](02_datos.png)
+
 Comando utilizado para cada archivo, sustituyendo `<archivo>` por cada nombre en el orden anterior:
 
 ```bash
@@ -29,6 +31,8 @@ docker exec <contenedor> psql -X -v ON_ERROR_STOP=1 -U postgres \
 
 Conclusión: coincide con lo esperado. La consulta usa varias tablas y conserva la evaluación inicial sin diagnóstico mediante `LEFT JOIN`.
 
+![Resultado de Q01: historial de evaluaciones de Luna](evidencia_Q01.png)
+
 **Q02 — Aplicaciones pendientes al 27-10-2026.** Esperado: tres pendientes, una vencida. Observado:
 
 | animal | tipo | fecha planificada | situación |
@@ -38,6 +42,8 @@ Conclusión: coincide con lo esperado. La consulta usa varias tablas y conserva 
 | HS-002 Milo | VACUNA | 2026-11-05 | PROGRAMADA |
 
 Conclusión: coincide con lo esperado. Las tres aplicaciones realizadas no aparecen.
+
+![Resultado de Q02: aplicaciones pendientes](evidencia_Q02.png)
 
 **Q03 — Revisiones y registros confirmados.** Esperado y observado:
 
@@ -50,6 +56,8 @@ Conclusión: coincide con lo esperado. Las tres aplicaciones realizadas no apare
 | HS-005 Menta | 0 | 0 |
 
 Conclusión: coincide con lo esperado. Se cuentan apariciones confirmadas por revisión; el mismo diagnóstico en dos revisiones cuenta dos veces.
+
+![Resultado de Q03: revisiones y diagnósticos confirmados por animal](03_consultas.png)
 
 **Q04 — Indicaciones que atienden varios diagnósticos.** Esperado y observado:
 
@@ -108,6 +116,8 @@ SELECT estado_aplicacion(2);
 
 **Consideración:** los estados calculados mediante `CURRENT_DATE` dependen del día en que se ejecute la consulta.
 
+![Resultados de las funciones R01 y R02](04_rutinas.png)
+
 ### R03 y R04 — Registro de una aplicación realizada
 
 El procedimiento `registrar_aplicacion` permite registrar la fecha efectiva, el responsable y las observaciones de una aplicación pendiente. Valida la existencia de la aplicación, impide registrar nuevamente una ya realizada y exige los tres datos obligatorios.
@@ -135,6 +145,8 @@ ROLLBACK;
 | ---: | --- | ---: | --- | --- |
 | 4 | 2026-10-28 | 3 | Aplicación realizada correctamente | Cumple: el procedimiento registra los datos proporcionados. |
 
+![Prueba aceptada: registro de aplicación realizado](Captura_rollback.png)
+
 El `ROLLBACK` devuelve la aplicación a su estado original, de modo que las pruebas siguientes pueden utilizar el mismo conjunto de datos.
 
 **Prueba rechazada.** Se intentó registrar la aplicación sin responsable:
@@ -151,6 +163,8 @@ CALL registrar_aplicacion(
 | Resultado esperado | Resultado observado | Conclusión |
 | --- | --- | --- |
 | Rechazo por ausencia del responsable | `ERROR: Debe indicar fecha, responsable y observaciones` (`SQLSTATE P0001`) | Cumple: no se admite el registro incompleto. |
+
+![Prueba rechazada: error al omitir el responsable](error.png)
 
 ### R05 — Reporte temporal de aplicaciones pendientes
 
@@ -171,6 +185,8 @@ ORDER BY fecha_planificada;
 | HS-002 | Milo | Aplicar vacuna según valoración veterinaria | 2026-11-05 | PROGRAMADA |
 
 **Resultado observado:** se obtuvieron tres filas, una vencida y dos programadas. **Conclusión:** coincide con los datos pendientes cargados.
+
+![Resultado del procedimiento con tabla temporal](evidencia_tabla_temporal.png)
 
 ### R06 — Comparación con una consulta SQL directa
 
@@ -195,6 +211,8 @@ ORDER BY ap.fecha_planificada;
 ```
 
 **Resultado observado:** la consulta directa devolvió las mismas tres aplicaciones, con iguales fechas y estados. **Conclusión:** ambas alternativas producen el mismo reporte. La consulta directa es más sencilla para una lectura puntual; la tabla temporal permite conservar el resultado intermedio y consultarlo varias veces durante la misma sesión, aunque requiere creación y mantenimiento del objeto temporal.
+
+![Resultado equivalente mediante SQL directo](evidencia_sql_directo.png)
 
 Los IDs Q01–Q04, P01–P12 y R01–R06 permiten cotejar cada salida con su sentencia SQL y repetirla sobre una base vacía.
 
