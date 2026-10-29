@@ -60,12 +60,19 @@ INSERT INTO indicacion
     (id_indicacion, evaluacion_id, tipo_indicacion, descripcion,
      estado_indicacion, indicacion_sustituida_id)
 VALUES
-    (1, 2, 'TRATAMIENTO', 'Curación tópica de la piel', 'ACTIVA', NULL),
+    (1, 2, 'TRATAMIENTO', 'Curación de piel y limpieza de oído', 'ACTIVA', NULL),
     (2, 2, 'MEDICAMENTO', 'Medicamento inicial para la piel', 'SUSTITUIDA', NULL),
     (3, 3, 'MEDICAMENTO', 'Medicamento ajustado para la piel', 'ACTIVA', 2),
     (4, 5, 'VACUNA', 'Aplicar vacuna según valoración veterinaria', 'ACTIVA', NULL),
     (5, 7, 'CONTROL_POSTERIOR', 'Revisar evolución de la tos', 'ACTIVA', NULL),
     (6, 3, 'PROCEDIMIENTO', 'Limpieza de la zona afectada', NULL, NULL);
+
+-- Una indicación puede atender varios diagnósticos. La vacuna preventiva
+-- no se vincula a un diagnóstico de enfermedad.
+INSERT INTO indicacion_diagnostico (indicacion_id, diagnostico_id) VALUES
+    (1, 1), (1, 2),
+    (2, 1), (3, 1),
+    (5, 4), (6, 1);
 
 -- Hay aplicaciones realizadas, una vencida y dos programadas a futuro.
 INSERT INTO aplicacion_indicacion

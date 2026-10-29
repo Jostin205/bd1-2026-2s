@@ -149,14 +149,85 @@ BEGIN
     END;
 END $$;
 
--- La salida de este SELECT es la evidencia observada de P01-P08.
+-- P09. Precondición: HS-001 y los demás datos clínicos son válidos.
+-- Sentencia: insertar revisión 9003 sin veterinario_id.
+-- Esperado: rechazo por chk_revision_campos (RN-10).
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO evaluacion_salud
+            (id_evaluacion, animal_codigo, tipo_evaluacion, fecha_evaluacion,
+             motivo, observaciones, peso, recomendaciones)
+        VALUES (9003, 'HS-001', 'REVISION_VETERINARIA', DATE '2026-10-28',
+                'Control', 'Hallazgo de prueba', 12.40, 'Continuar seguimiento');
+        RAISE EXCEPTION 'P09: se aceptó una revisión sin veterinario';
+    EXCEPTION WHEN check_violation THEN
+        INSERT INTO resultado_integridad_lab03 VALUES
+            ('P09', 'Veterinario obligatorio en revisión', 'RECHAZADO',
+             'RECHAZADO (check_violation)', 'Cumple');
+    END;
+END $$;
+
+-- P10. Precondición: evaluación 1 es INICIAL y diagnóstico 4 existe.
+-- Sentencia: registrar el diagnóstico 4 en la evaluación inicial.
+-- Esperado: rechazo por FK que exige REVISION_VETERINARIA (RN-11).
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO diagnostico_revision
+            (evaluacion_id, diagnostico_id, estado_diagnostico)
+        VALUES (1, 4, 'PROVISIONAL');
+        RAISE EXCEPTION 'P10: se aceptó un diagnóstico en evaluación inicial';
+    EXCEPTION WHEN foreign_key_violation THEN
+        INSERT INTO resultado_integridad_lab03 VALUES
+            ('P10', 'Diagnóstico solo en revisión', 'RECHAZADO',
+             'RECHAZADO (foreign_key_violation)', 'Cumple');
+    END;
+END $$;
+
+-- P11. Precondición: evaluación 1 es INICIAL; indicación 9003 no existe.
+-- Sentencia: crear indicación 9003 a partir de esa evaluación.
+-- Esperado: rechazo por FK que exige REVISION_VETERINARIA (RN-12).
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO indicacion
+            (id_indicacion, evaluacion_id, tipo_indicacion, descripcion)
+        VALUES (9003, 1, 'TRATAMIENTO', 'Indicación de prueba');
+        RAISE EXCEPTION 'P11: se aceptó una indicación en evaluación inicial';
+    EXCEPTION WHEN foreign_key_violation THEN
+        INSERT INTO resultado_integridad_lab03 VALUES
+            ('P11', 'Indicación solo desde revisión', 'RECHAZADO',
+             'RECHAZADO (foreign_key_violation)', 'Cumple');
+    END;
+END $$;
+
+-- P12. Precondición: indicación 4 existe; aplicación 9003 no existe.
+-- Sentencia: registrar una aplicación realizada con observaciones vacías.
+-- Esperado: rechazo por chk_aplicacion_realizada (RN-13).
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO aplicacion_indicacion
+            (id_aplicacion, indicacion_id, fecha_planificada, fecha_real,
+             responsable_id, observaciones)
+        VALUES (9003, 4, DATE '2026-10-28', DATE '2026-10-28', 3, '   ');
+        RAISE EXCEPTION 'P12: se aceptaron observaciones vacías';
+    EXCEPTION WHEN check_violation THEN
+        INSERT INTO resultado_integridad_lab03 VALUES
+            ('P12', 'Observaciones no vacías al realizar', 'RECHAZADO',
+             'RECHAZADO (check_violation)', 'Cumple');
+    END;
+END $$;
+
+-- La salida de este SELECT es la evidencia observada de P01-P12.
 SELECT id_prueba, regla, esperado, observado, conclusion
 FROM resultado_integridad_lab03
 ORDER BY id_prueba;
 
 DO $$
 BEGIN
-    IF (SELECT COUNT(*) FROM resultado_integridad_lab03) <> 8 THEN
+    IF (SELECT COUNT(*) FROM resultado_integridad_lab03) <> 12 THEN
         RAISE EXCEPTION 'Faltan resultados de pruebas de integridad';
     END IF;
 END $$;

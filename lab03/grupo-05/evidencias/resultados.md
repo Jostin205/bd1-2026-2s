@@ -1,8 +1,21 @@
 # Evidencias de consultas y pruebas — Grupo 05
 
-Ejecución local del 27-10-2026 sobre una base en memoria, con `01_esquema.sql`, `02_datos.sql`, `03_consultas.sql` y `05_pruebas.sql`. Motor: PGlite 0.5.12, que informó `PostgreSQL 18.6 ... wasm32-unknown-emscripten`. La versión de entrega es PostgreSQL 16; la corrida en esa versión sigue pendiente. `04_rutinas.sql` estaba vacío durante esa verificación inicial; los resultados de las rutinas que se documentan más adelante corresponden a pruebas posteriores en PostgreSQL 16 mediante pgAdmin. El esquema incluye ahora `COMMIT;`, necesario para ejecutarlo en una conexión `psql` distinta de los demás archivos.
+El 28-10-2026 se ejecutaron los scripts en la base `huellas_seguras_lab3` con PostgreSQL 16.15 en Docker. `SELECT version()` confirmó la versión. Cada archivo se ejecutó en una conexión `psql -X -v ON_ERROR_STOP=1` independiente, en el orden del laboratorio. El directorio del grupo se montó en `/work` en modo lectura.
 
-Tras añadir `COMMIT;`, se repitió la secuencia con una base persistente y una conexión nueva por archivo, como hace el workflow: `01_esquema.sql` → `02_datos.sql` → `04_rutinas.sql` → `03_consultas.sql` → `05_pruebas.sql`. Antes de `02_datos.sql`, `to_regclass('public.persona')` devolvió `persona`. Los cinco archivos se ejecutaron; Q01–Q03 devolvieron 3, 3 y 5 filas y P01–P08 registraron los ocho resultados esperados. Esta comprobación también usó PGlite; falta repetirla en el PostgreSQL 16 de CI.
+| Archivo | Resultado observado |
+| --- | --- |
+| `01_esquema.sql` | Tablas, restricciones e índices creados; `COMMIT` sin errores. |
+| `02_datos.sql` | Datos cargados; cinco secuencias `SERIAL` sincronizadas; `COMMIT` sin errores. |
+| `04_rutinas.sql` | Dos funciones y dos procedimientos creados sin errores. |
+| `03_consultas.sql` | Q01–Q04 devolvieron respectivamente 3, 3, 5 y 1 filas. |
+| `05_pruebas.sql` | P01–P12 devolvieron doce conclusiones `Cumple`; el script terminó con `ROLLBACK`. |
+
+Comando utilizado para cada archivo, sustituyendo `<archivo>` por cada nombre en el orden anterior:
+
+```bash
+docker exec <contenedor> psql -X -v ON_ERROR_STOP=1 -U postgres \
+  -d huellas_seguras_lab3 -f /work/sql/<archivo>
+```
 
 ## Consultas
 
@@ -38,9 +51,17 @@ Conclusión: coincide con lo esperado. Las tres aplicaciones realizadas no apare
 
 Conclusión: coincide con lo esperado. Se cuentan apariciones confirmadas por revisión; el mismo diagnóstico en dos revisiones cuenta dos veces.
 
+**Q04 — Indicaciones que atienden varios diagnósticos.** Esperado y observado:
+
+| id_indicacion | animal | descripción | cantidad de diagnósticos | diagnósticos atendidos |
+| ---: | --- | --- | ---: | --- |
+| 1 | HS-001 | Curación de piel y limpieza de oído | 2 | Dermatitis, Otitis |
+
+Conclusión: la relación `indicacion_diagnostico` conserva los dos diagnósticos atendidos por una misma indicación.
+
 ## Pruebas de integridad
 
-Las sentencias completas, los valores y el control de errores están en [05_pruebas.sql](../sql/05_pruebas.sql). La salida final del script registró ocho conclusiones `Cumple`. Cada prueba se ejecutó dentro de una transacción que se revirtió al final.
+Las sentencias completas, los valores y el control de errores están en [05_pruebas.sql](../sql/05_pruebas.sql). La ejecución registró doce conclusiones `Cumple` y terminó con `ROLLBACK`.
 
 | ID | Precondición | Sentencia ejecutada | Esperado | Observado | Conclusión |
 | --- | --- | --- | --- | --- | --- |
@@ -52,12 +73,16 @@ Las sentencias completas, los valores y el control de errores están en [05_prue
 | P06 | PRB-006 no existe. | Insertar PRB-006 con `edad_estimada = -1`. | RECHAZADO | `check_violation` | Cumple: edad no negativa. |
 | P07 | Revisión 5 y diagnóstico 2 existen; pareja (5,2) ausente. | Insertar `(5,2,'INVALIDO')` en `diagnostico_revision`. | RECHAZADO | `check_violation` | Cumple RN-11: estado permitido. |
 | P08 | Indicación 4 existe; aplicación 9002 ausente. | Insertar aplicación realizada sin responsable. | RECHAZADO | `check_violation` | Cumple RN-13: responsable requerido. |
+| P09 | HS-001 existe y los demás datos clínicos son válidos. | Insertar revisión 9003 sin veterinario. | RECHAZADO | `check_violation` | Cumple RN-10: veterinario obligatorio. |
+| P10 | Evaluación 1 es INICIAL; diagnóstico 4 existe. | Vincular diagnóstico 4 a la evaluación 1. | RECHAZADO | `foreign_key_violation` | Cumple RN-11: diagnóstico solo en revisión. |
+| P11 | Evaluación 1 es INICIAL; indicación 9003 ausente. | Crear indicación 9003 desde la evaluación 1. | RECHAZADO | `foreign_key_violation` | Cumple RN-12: indicación solo desde revisión. |
+| P12 | Indicación 4 existe; aplicación 9003 ausente. | Registrar aplicación realizada con observaciones de solo espacios. | RECHAZADO | `check_violation` | Cumple RN-13: observaciones no vacías. |
 
 ## Funciones y procedimientos almacenados
 
-Las siguientes pruebas se realizaron posteriormente en **PostgreSQL 16**, desde **pgAdmin 4**, sobre la base `huellas_seguras_lab3`, después de ejecutar `01_esquema.sql`, `02_datos.sql` y crear las rutinas definidas en [04_rutinas.sql](../sql/04_rutinas.sql). Los resultados indicados corresponden a las ejecuciones comprobadas; aún se deben adjuntar las capturas de pantalla al repositorio.
+Las siguientes llamadas se verificaron en **PostgreSQL 16.15**, después de cargar los datos y crear las rutinas de [04_rutinas.sql](../sql/04_rutinas.sql).
 
-### Conteo de revisiones veterinarias
+### R01 — Conteo de revisiones veterinarias
 
 La función `contar_revisiones_animal(codigo)` cuenta únicamente las evaluaciones de tipo `REVISION_VETERINARIA` asociadas al animal indicado.
 
@@ -69,7 +94,7 @@ SELECT contar_revisiones_animal('HS-001');
 | --- | ---: | ---: | --- |
 | HS-001 (Luna) | 2 | 2 | Cumple: Luna tiene dos revisiones veterinarias. |
 
-### Estado de una aplicación
+### R02 — Estado de una aplicación
 
 La función `estado_aplicacion(id)` devuelve `REALIZADA` si existe una fecha real; de lo contrario, `VENCIDA` cuando la fecha planificada es anterior a `CURRENT_DATE`, o `PROGRAMADA` en los demás casos.
 
@@ -83,7 +108,7 @@ SELECT estado_aplicacion(2);
 
 **Consideración:** los estados calculados mediante `CURRENT_DATE` dependen del día en que se ejecute la consulta.
 
-### Registro de una aplicación realizada
+### R03 y R04 — Registro de una aplicación realizada
 
 El procedimiento `registrar_aplicacion` permite registrar la fecha efectiva, el responsable y las observaciones de una aplicación pendiente. Valida la existencia de la aplicación, impide registrar nuevamente una ya realizada y exige los tres datos obligatorios.
 
@@ -127,7 +152,7 @@ CALL registrar_aplicacion(
 | --- | --- | --- |
 | Rechazo por ausencia del responsable | `ERROR: Debe indicar fecha, responsable y observaciones` (`SQLSTATE P0001`) | Cumple: no se admite el registro incompleto. |
 
-### Reporte temporal de aplicaciones pendientes
+### R05 — Reporte temporal de aplicaciones pendientes
 
 El procedimiento `generar_reporte_pendientes()` crea una **tabla temporal** llamada `reporte_pendientes` con las aplicaciones que aún no tienen `fecha_real`. El reporte reúne datos del animal, la indicación, la fecha planificada y el estado calculado. La tabla temporal está disponible en la sesión actual de PostgreSQL y se vuelve a generar al invocar el procedimiento.
 
@@ -139,15 +164,15 @@ FROM reporte_pendientes
 ORDER BY fecha_planificada;
 ```
 
-| codigo_interno | nombre_animal | fecha_planificada | estado |
-| --- | --- | --- | --- |
-| HS-001 | Luna | 2026-10-10 | VENCIDA |
-| HS-003 | Nube | 2026-11-03 | PROGRAMADA |
-| HS-002 | Milo | 2026-11-05 | PROGRAMADA |
+| codigo_interno | nombre_animal | indicacion | fecha_planificada | estado |
+| --- | --- | --- | --- | --- |
+| HS-001 | Luna | Curación de piel y limpieza de oído | 2026-10-10 | VENCIDA |
+| HS-003 | Nube | Revisar evolución de la tos | 2026-11-03 | PROGRAMADA |
+| HS-002 | Milo | Aplicar vacuna según valoración veterinaria | 2026-11-05 | PROGRAMADA |
 
-**Resultado observado:** se obtuvieron tres filas, una vencida y dos programadas. La consulta también devuelve una columna `indicacion` con la descripción correspondiente. **Conclusión:** coincide con los datos pendientes cargados.
+**Resultado observado:** se obtuvieron tres filas, una vencida y dos programadas. **Conclusión:** coincide con los datos pendientes cargados.
 
-### Comparación con una consulta SQL directa
+### R06 — Comparación con una consulta SQL directa
 
 Para comprobar si la tabla temporal era indispensable, se ejecutó una consulta equivalente sin crear objetos temporales:
 
@@ -171,10 +196,5 @@ ORDER BY ap.fecha_planificada;
 
 **Resultado observado:** la consulta directa devolvió las mismas tres aplicaciones, con iguales fechas y estados. **Conclusión:** ambas alternativas producen el mismo reporte. La consulta directa es más sencilla para una lectura puntual; la tabla temporal permite conservar el resultado intermedio y consultarlo varias veces durante la misma sesión, aunque requiere creación y mantenimiento del objeto temporal.
 
-## Evidencias pendientes de adjuntar
-
-- Capturas de pgAdmin 4 con la ejecución y salida de las dos funciones.
-- Capturas de la ejecución aceptada y del error esperado del procedimiento de registro.
-- Capturas del reporte temporal y de la consulta SQL directa con resultados equivalentes.
-- Resultado de una ejecución completa, desde una base vacía, de todos los archivos en PostgreSQL 16, incluidas las consultas y pruebas de integridad. Las pruebas de consultas e integridad documentadas arriba corresponden todavía a PGlite, mientras que las rutinas descritas en esta sección sí se probaron por separado en PostgreSQL 16.
+Los IDs Q01–Q04, P01–P12 y R01–R06 permiten cotejar cada salida con su sentencia SQL y repetirla sobre una base vacía.
 

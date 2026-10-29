@@ -36,7 +36,18 @@ CREATE TABLE evaluacion_salud (
     motivo TEXT NULL,
     observaciones TEXT NULL,
     peso NUMERIC(5,2) NULL CHECK (peso > 0),
-    recomendaciones TEXT NULL
+    recomendaciones TEXT NULL,
+    -- La clave compuesta permite que tablas hijas referencien solo revisiones.
+    CONSTRAINT uq_evaluacion_id_tipo UNIQUE (id_evaluacion, tipo_evaluacion),
+    CONSTRAINT chk_revision_campos CHECK (
+        tipo_evaluacion <> 'REVISION_VETERINARIA' OR (
+            veterinario_id IS NOT NULL
+            AND NULLIF(BTRIM(motivo), '') IS NOT NULL
+            AND NULLIF(BTRIM(observaciones), '') IS NOT NULL
+            AND peso IS NOT NULL
+            AND NULLIF(BTRIM(recomendaciones), '') IS NOT NULL
+        )
+    )
 );
 
 CREATE TABLE diagnostico (
@@ -45,19 +56,35 @@ CREATE TABLE diagnostico (
 );
 
 CREATE TABLE diagnostico_revision (
-    evaluacion_id INT NOT NULL REFERENCES evaluacion_salud(id_evaluacion) ON UPDATE CASCADE ON DELETE CASCADE,
+    evaluacion_id INT NOT NULL,
+    tipo_evaluacion VARCHAR(40) NOT NULL DEFAULT 'REVISION_VETERINARIA'
+        CHECK (tipo_evaluacion = 'REVISION_VETERINARIA'),
     diagnostico_id INT NOT NULL REFERENCES diagnostico(id_diagnostico) ON UPDATE CASCADE ON DELETE RESTRICT,
     estado_diagnostico VARCHAR(30) NOT NULL CHECK (estado_diagnostico IN ('PROVISIONAL', 'CONFIRMADO', 'DESCARTADO')),
-    PRIMARY KEY (evaluacion_id, diagnostico_id)
+    PRIMARY KEY (evaluacion_id, diagnostico_id),
+    CONSTRAINT fk_diagnostico_revision_evaluacion
+        FOREIGN KEY (evaluacion_id, tipo_evaluacion)
+        REFERENCES evaluacion_salud(id_evaluacion, tipo_evaluacion) ON DELETE CASCADE
 );
 
 CREATE TABLE indicacion (
     id_indicacion SERIAL PRIMARY KEY,
-    evaluacion_id INT NOT NULL REFERENCES evaluacion_salud(id_evaluacion) ON UPDATE CASCADE ON DELETE CASCADE,
+    evaluacion_id INT NOT NULL,
+    tipo_evaluacion VARCHAR(40) NOT NULL DEFAULT 'REVISION_VETERINARIA'
+        CHECK (tipo_evaluacion = 'REVISION_VETERINARIA'),
     tipo_indicacion VARCHAR(50) NOT NULL CHECK (tipo_indicacion IN ('TRATAMIENTO', 'MEDICAMENTO', 'VACUNA', 'PROCEDIMIENTO', 'CONTROL_POSTERIOR')),
     descripcion TEXT NOT NULL,
     estado_indicacion VARCHAR(30) NULL,
-    indicacion_sustituida_id INT NULL REFERENCES indicacion(id_indicacion)
+    indicacion_sustituida_id INT NULL REFERENCES indicacion(id_indicacion),
+    CONSTRAINT fk_indicacion_revision
+        FOREIGN KEY (evaluacion_id, tipo_evaluacion)
+        REFERENCES evaluacion_salud(id_evaluacion, tipo_evaluacion) ON DELETE CASCADE
+);
+
+CREATE TABLE indicacion_diagnostico (
+    indicacion_id INT NOT NULL REFERENCES indicacion(id_indicacion) ON UPDATE CASCADE ON DELETE CASCADE,
+    diagnostico_id INT NOT NULL REFERENCES diagnostico(id_diagnostico) ON UPDATE CASCADE ON DELETE RESTRICT,
+    PRIMARY KEY (indicacion_id, diagnostico_id)
 );
 
 CREATE TABLE aplicacion_indicacion (
@@ -68,7 +95,10 @@ CREATE TABLE aplicacion_indicacion (
     responsable_id INT NULL REFERENCES persona(id_persona),
     observaciones TEXT NULL,
     CONSTRAINT chk_aplicacion_realizada CHECK (
-        (fecha_real IS NULL) OR (fecha_real IS NOT NULL AND responsable_id IS NOT NULL AND observaciones IS NOT NULL)
+        fecha_real IS NULL OR (
+            responsable_id IS NOT NULL
+            AND NULLIF(BTRIM(observaciones), '') IS NOT NULL
+        )
     )
 );
 

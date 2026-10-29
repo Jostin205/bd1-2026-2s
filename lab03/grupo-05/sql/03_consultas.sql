@@ -49,3 +49,18 @@ LEFT JOIN evaluacion_salud AS e ON e.animal_codigo = a.codigo_interno
 LEFT JOIN diagnostico_revision AS dr ON dr.evaluacion_id = e.id_evaluacion
 GROUP BY a.codigo_interno, a.nombre
 ORDER BY a.codigo_interno;
+
+-- Q04. ¿Qué indicaciones atienden más de un diagnóstico?
+-- Esperado: la indicación 1 de HS-001 atiende Dermatitis y Otitis.
+SELECT i.id_indicacion, a.codigo_interno, i.descripcion,
+       COUNT(*) AS cantidad_diagnosticos,
+       STRING_AGG(d.nombre_estandarizado, ', ' ORDER BY d.nombre_estandarizado)
+           AS diagnosticos_atendidos
+FROM indicacion AS i
+JOIN indicacion_diagnostico AS ide ON ide.indicacion_id = i.id_indicacion
+JOIN diagnostico AS d ON d.id_diagnostico = ide.diagnostico_id
+JOIN evaluacion_salud AS e ON e.id_evaluacion = i.evaluacion_id
+JOIN animal AS a ON a.codigo_interno = e.animal_codigo
+GROUP BY i.id_indicacion, a.codigo_interno, i.descripcion
+HAVING COUNT(*) > 1
+ORDER BY i.id_indicacion;
