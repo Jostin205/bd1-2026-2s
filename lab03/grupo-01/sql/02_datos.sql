@@ -1,22 +1,21 @@
--- B1 DATOS REPRESENTATIVOS
+-- Laboratorio 03 - Grupo 01
+-- Subsistema de Atención Médica Efectiva, Diagnóstico Clínico y Prescripción Terapéutica
+-- Caso: Clínica Los Robles
 -- Archivo: 02_datos.sql
 
--- 1. Catalogo de diagnosticos
--- Regla de negocio RN-20
+BEGIN;
 
+-- 1. Catálogo de diagnósticos médicos (CIE-10) [RN-20]
 INSERT INTO diagnostico (
     codigo_diagnostico,
     descripcion_diagnostico
 )
-
 VALUES
     ('J00', 'Rinofaringitis aguda'),
     ('J06.9', 'Infección aguda de vias respiratorias superiores, no especificada'),
     ('R50.9', 'Fiebre, no especificada');
 
--- 2. Registros de consultas medicas
--- Reglas de negocio: RN-16 y RN-17
-
+-- 2. Registros de consultas médicas [RN-16, RN-17]
 INSERT INTO consulta (
     id_consulta,
     id_paciente,
@@ -26,7 +25,6 @@ INSERT INTO consulta (
     motivo_clinico,
     resumen_general
 )
-
 VALUES
 (
     5001,
@@ -37,7 +35,6 @@ VALUES
     'Fiebre y dolor de garganta',
     'Paciente con sintomas respiratorios leves.'
 ),
-
 (
     5002,
     100246,
@@ -45,9 +42,8 @@ VALUES
     NULL,
     '2026-10-11 14:15:00',
     'Dificultad respiratoria leve',
-    'Atencion urgente por sintormas respiratorios.'
+    'Atencion urgente por sintomas respiratorios.'
 ),
-
 (
     5003,
     100245,
@@ -56,12 +52,9 @@ VALUES
     '2026-10-13 11:05:00',
     'Control de sistemas respiratorios',
     'Paciente presenta mejoria respecto a la consulta anterior.'
-)
+);
 
-
--- 3. Observaciones clinicas versionadas
--- Reglas: RN-19 y S-13
-
+-- 3. Observaciones clínicas versionadas [RN-19, S-13]
 INSERT INTO observacion_clinica (
     id_consulta,
     consecutivo_observacion,
@@ -102,10 +95,7 @@ VALUES
     TRUE
 );
 
-
--- 4. Asociacion de consultas con diagnosticos
--- Regla de negocio: RN-20
-
+-- 4. Asociación de consultas con diagnósticos [RN-20]
 INSERT INTO consulta_diagnostico_nm (
     id_consulta,
     codigo_diagnostico,
@@ -138,10 +128,7 @@ VALUES
     'Confirmado'
 );
 
-
--- 5. Registro de tratamientos medicos
--- Reglas de negocio: RN-21, RN-25 y RN-26
-
+-- 5. Registro de tratamientos médicos [RN-21, RN-25, RN-26]
 INSERT INTO tratamiento (
     id_tratamiento,
     id_consulta,
@@ -209,10 +196,7 @@ VALUES
     NULL
 );
 
-
--- 6. Asociacion entre tratamientos y diagnosticos
--- Regla de negocio: RN-21
-
+-- 6. Asociación entre tratamientos y diagnósticos [RN-21]
 INSERT INTO tratamiento_diagnostico_nm (
     id_tratamiento,
     codigo_diagnostico
@@ -223,3 +207,5 @@ VALUES
     (7002, 'J06.9'),
     (7003, 'J06.9'),
     (7004, 'J00');
+
+COMMIT;
