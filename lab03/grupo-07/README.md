@@ -5,7 +5,7 @@
 | Integrante | Parte que defiende | Video |
 |---|---|---|
 | Maikel Aguilera | Esquema e integridad | https://youtu.be/IPMtGIzaaXY |
-| Jostin Calderon | Programacion almacenada | _enlace_ |
+| Jostin Calderon | Programacion almacenada | https://youtu.be/kn_CaITU8yo|
 
 ## 1. Proceso implementado
 
