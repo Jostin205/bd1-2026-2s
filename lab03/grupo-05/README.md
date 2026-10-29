@@ -60,7 +60,31 @@ Para garantizar la integridad referencial y evitar fallos de dependencias, los s
 4. `sql/03_consultas.sql` — Consultas de negocio.
 5. `sql/05_pruebas.sql` — Pruebas de integridad y casos de borde.
 
-#### Ejecución desde CLI (`psql`):
+#### Ejecución con Docker Desktop desde PowerShell (Windows)
+
+Con Docker Desktop en ejecución, abrir PowerShell en la raíz del repositorio. La primera vez, crear un contenedor PostgreSQL 16 y montar la carpeta del grupo en `/work` en modo lectura:
+
+```powershell
+$grupo = (Resolve-Path .\lab03\grupo-05).Path
+docker run -d --name huellas-lab3 -e POSTGRES_PASSWORD=postgres --mount "type=bind,source=$grupo,target=/work,readonly" postgres:16-alpine
+docker exec huellas-lab3 pg_isready -U postgres
+```
+
+Esperar a que `pg_isready` muestre `accepting connections` antes de continuar; si todavía no está listo, repetir ese comando. Si el contenedor `huellas-lab3` ya existe, omitir `docker run` y usar `docker start huellas-lab3` solo si está detenido. Crear la base y ejecutar los scripts una vez, en este orden:
+
+```powershell
+docker exec huellas-lab3 createdb -U postgres huellas_seguras_lab3
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/01_esquema.sql
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/02_datos.sql
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/04_rutinas.sql
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/03_consultas.sql
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/05_pruebas.sql
+```
+
+El montaje de `/work` es solo de lectura para los archivos del repositorio; PostgreSQL guarda sus datos en el almacenamiento de Docker, fuera de esa carpeta. La carga no es repetible sobre la misma base: para volver a ejecutarla desde cero, crear una base de laboratorio vacía con otro nombre y usar ese nombre en los seis comandos anteriores.
+
+#### Ejecución con PostgreSQL instalado localmente (`psql`)
+
 Desde `lab03/grupo-05`, crear una base de laboratorio vacía y ejecutar cada archivo. Para repetir la carga, recrear esa base.
 
 ```bash

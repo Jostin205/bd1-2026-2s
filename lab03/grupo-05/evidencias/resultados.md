@@ -12,11 +12,10 @@ El 28-10-2026 se ejecutaron los scripts en la base `huellas_seguras_lab3` con Po
 
 ![Verificación de los datos cargados en la tabla animal](02_datos.png)
 
-Comando utilizado para cada archivo, sustituyendo `<archivo>` por cada nombre en el orden anterior:
+Para repetir un archivo desde PowerShell, ejecutar el comando en una sola línea. Este ejemplo ejecuta las consultas; para los demás scripts, cambiar `03_consultas.sql` por el nombre correspondiente y respetar el orden anterior. La preparación del contenedor y la base está en el [README](../README.md).
 
-```bash
-docker exec <contenedor> psql -X -v ON_ERROR_STOP=1 -U postgres \
-  -d huellas_seguras_lab3 -f /work/sql/<archivo>
+```powershell
+docker exec huellas-lab3 psql -X -v ON_ERROR_STOP=1 -U postgres -d huellas_seguras_lab3 -f /work/sql/03_consultas.sql
 ```
 
 ## Consultas
